@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    runs-on: gh-arc-runner-set
+    runs-on: gh-arc-runner-set # Use your self-hosted ARC runners
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -17,11 +17,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
-          # This connects the local 'buildx' client to your remote BuildKit daemon.
-          # The value for BUILDKIT_HOST should be accessible from your runner pod.
-          # It should match the value set in your RunnerScaleSet's environment variable.
-          buildkitd-flags: "--addr tcp://buildkitd-service.buildkit.svc.cluster.local:1234"
-          driver-opts: image=moby/buildkit:latest # Use the same BuildKit image as your daemon
+          # Use 'endpoint' to connect to your remote BuildKit daemon.
+          # This explicitly tells buildx to use the remote daemon,
+          # avoiding attempts to connect to a local Docker socket.
+          endpoint: tcp://buildkitd-service.buildkit.svc.cluster.local:1234
+          # If your BuildKit daemon image is specific, you can provide it here:
+          # driver-opts: image=moby/buildkit:latest
           # Optionally, if you have multiple builders, you can specify one:
           # builder: my-remote-builder # Name of the builder created by buildx
 

@@ -1,3 +1,4 @@
+# .github/workflows/build-and-push.yml
 name: Docker Image Build with BuildKit on ARC
 
 on:
@@ -13,17 +14,25 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
+      # Install Docker Buildx CLI. This action primarily ensures the 'buildx' binary is present.
+      # It does NOT attempt to create a local daemon.
+      - name: Install Buildx CLI
         uses: docker/setup-buildx-action@v3
-        with:
-          # Crucially, set the driver to 'remote' to connect to your existing BuildKit daemon.
-          driver: remote
-          # Use 'endpoint' to specify the address of your remote BuildKit daemon.
-          endpoint: tcp://buildkitd-service.buildkit.svc.cluster.local:1234
-          # Remove 'buildkitd-flags' and 'driver-opts' when using 'driver: remote'
-          # as these are for configuring a daemon launched by the action itself.
-          # Optionally, if you have multiple builders, you can specify one:
-          # builder: my-remote-builder # Name of the builder created by buildx
+        # No 'driver' or 'endpoint' inputs here. Just installs the CLI.
+
+      # Explicitly create and use a buildx builder that points to your remote BuildKit daemon.
+      # This step ensures the correct builder context is set for subsequent docker build commands.
+      - name: Create and Set Buildx Builder
+        run: |
+          BUILDER_NAME="my-remote-buildkit-builder"
+          BUILDER_ENDPOINT="tcp://buildkitd-service.buildkit.svc.cluster.local:1234"
+
+          # Check if the builder already exists to avoid errors on retry
+          if ! docker buildx inspect $BUILDER_NAME > /dev/null 2>&1; then
+            docker buildx create --name $BUILDER_NAME --driver remote $BUILDER_ENDPOINT
+          fi
+          docker buildx use $BUILDER_NAME
+          docker buildx inspect --bootstrap # Ensure it starts and connects
 
       - name: Login to DockerHub
         uses: docker/login-action@v3
@@ -42,10 +51,6 @@ jobs:
             ${{ secrets.DOCKER_USERNAME }}/my-app:${{ github.sha }}
           cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/my-app:buildcache # Pull cache from registry
           cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/my-app:buildcache,mode=max # Push cache to registry
-          # For BuildKit's native remote caching with your daemon, you might not need registry cache-from/to
-          # if your BuildKit daemon itself has persistent storage and is shared across builds.
-          # However, registry caching is still useful for sharing cache with other environments or when the daemon might be ephemeral.
-          #
-          # For sharing the *daemon's* internal cache, you rely on the persistent volume attached to the buildkitd deployment.
-          # If you want to use a specific BuildKit builder instance you created with `docker buildx create`, specify it here:
-          # builder: my-remote-builder
+          # The 'builder' input here is optional if 'docker buildx use' was successful,
+          # but can be used for explicit clarity.
+          # builder: my-remote-buildkit-builder

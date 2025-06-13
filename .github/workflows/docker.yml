@@ -20,8 +20,6 @@ jobs:
             rootless=true
             replicas=1
             limits.memory=800Mi
-            limits.ephemeral-storage=1G
-            qemu.install=true
           buildkitd-flags: --oci-worker-no-process-sandbox
 
 

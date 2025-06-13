@@ -21,9 +21,9 @@ jobs:
         driver: kubernetes
         driver-opts: |
           namespace=buildkit
-          rootless=true # Important for rootless builds on Kubernetes
+          rootless=true 
         buildkitd-flags: |
-          --oci-worker-no-process-sandbox # Your specific BuildKit daemon flag
+          --oci-worker-no-process-sandbox 
 
     - name: Log in to Docker Hub
       uses: docker/login-action@v3

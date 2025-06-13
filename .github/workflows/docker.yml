@@ -37,6 +37,7 @@ jobs:
 
 
 
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
@@ -46,3 +47,5 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:${{ github.sha }}
             ghcr.io/${{ github.repository }}:latest
+        env:
+          DOCKER_BUILD_SUMMARY: false

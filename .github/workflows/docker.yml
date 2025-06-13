@@ -16,6 +16,11 @@ jobs:
         with:
           driver: kubernetes
           image: moby/buildkit:latest # Or moby/buildkit:rootless if preferred
+          buildkitd-container-security-context: |
+                    privileged: false 
+                    allowPrivilegeEscalation: false 
+                    runAsUser: 1000 # Run as a non-root user
+                    runAsGroup: 1000 # Run as a non-root group
           buildkitd-flags: --oci-worker-no-process-sandbox
           kubernetes-pod-annotations: |
             "kubernetes.io/security-context": '{ "runAsUser": 1000, "runAsGroup": 1000, "allowPrivilegeEscalation": false }'

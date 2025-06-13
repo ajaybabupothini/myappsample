@@ -20,8 +20,11 @@ jobs:
       with:
         driver: kubernetes
         driver-opts: |
-          namespace=buildkit # Define the Kubernetes namespace for BuildKit pods
-          rootless=true # Ensures BuildKit runs in rootless mode within the Kubernetes pods
+          namespace=buildkit
+          # Uncomment and configure these if you need to direct BuildKit pods to specific nodes
+          # nodeselector="kubernetes.io/arch=amd64"
+          # tolerations="key=value,operator=Exists"
+          rootless=true # Important for rootless builds on Kubernetes
         buildkitd-flags: |
           --oci-worker-no-process-sandbox # Your specific BuildKit daemon flag
 

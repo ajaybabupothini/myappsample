@@ -1,34 +1,43 @@
-name: Build and Push Image with BuildKit (Daemonless, Docker Hub)
+name: Build Rootless Docker Image on Kubernetes
 
 on:
-  workflow_dispatch:  # Manual trigger
+  # push:
+  #   branches:
+  #     - main
+  workflow_dispatch: # Allows manual trigger
 
 jobs:
-  build:
-    runs-on: gh-arc-runner-set
-
-    container:
-      image: moby/buildkit:rootless
-
-    env:
-      BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
-      CI_REGISTRY: https://index.docker.io/v1/
-      CI_REGISTRY_IMAGE: docker.io/ajaybabupothini/myapp
-      CI_COMMIT_SHA: ${{ github.sha }}
+  build-rootless:
+    runs-on: gh-arc-runner-set # Use your specific labels for self-hosted runners on Kubernetes
 
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - name: Log in to Docker Hub
-        run: |
-          mkdir -p ~/.docker
-          echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"${{ secrets.DOCKER_USERNAME }}\",\"password\":\"${{ secrets.DOCKER_TOKEN }}\"}}}" > ~/.docker/config.json
+    - name: Set up BuildKit with Kubernetes driver
+      uses: docker/setup-buildx-action@v3
+      with:
+        driver: kubernetes
+        driver-opts: |
+          namespace=buildkit # Or the namespace where you want BuildKit pods to run
+          # You can add node selectors or tolerations here if needed for specific nodes
+          # nodeselector="kubernetes.io/arch=amd64"
+          # tolerations="key=value,operator=Exists"
+          rootless=true # Important for rootless builds on Kubernetes
+        buildkitd-flags: |
+          --oci-worker-no-process-sandbox # Re-add your specific BuildKit daemon flag
 
-      - name: Build and push image with BuildKit
-        run: |
-          buildctl-daemonless.sh build \
-            --frontend dockerfile.v0 \
-            --local context=. \
-            --local dockerfile=. \
-            --output type=image,name=$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA,push=true
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }} # Your Docker Hub username secret
+        password: ${{ secrets.DOCKER_TOKEN }}   # Your Docker Hub Access Token secret
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ secrets.DOCKER_USERNAME }}/${{ github.repository }}:${{ github.sha }} # Adjust for your desired image name
+        cache-from: type=gha,scope=${{ github.workflow }} # Example for GitHub Actions cache
+        cache-to: type=gha,mode=max,scope=${{ github.workflow }} # Example for GitHub Actions cache

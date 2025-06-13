@@ -16,8 +16,8 @@ jobs:
         with:
           driver: kubernetes
           driver-opts: |
-                image=moby/buildkit:rootless # Using a base image pre-configured for rootless
-                rootless=true 
+            image=moby/buildkit:rootless # Using a base image pre-configured for rootless
+            rootless=true 
           buildkitd-flags: --oci-worker-no-process-sandbox
 
 

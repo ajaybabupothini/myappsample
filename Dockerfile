@@ -1,14 +1,21 @@
-# Use a lightweight base image
-FROM alpine:latest
+# Use a lean Node.js base image
+FROM node:18-alpine
 
-# Set a working directory
+# Set the working directory in the container
 WORKDIR /app
 
-# Copy a simple script into the container
-COPY hello.sh .
+# Copy package.json and package-lock.json to leverage Docker caching
+# This ensures that npm install is only run if package.json changes
+COPY package*.json ./
 
-# Make the script executable
-RUN chmod +x hello.sh
+# Install application dependencies
+RUN npm install
 
-# Define the command to run when the container starts
-CMD ["./hello.sh"]
+# Copy the rest of the application code
+COPY . .
+
+# Expose the port your app listens on (if applicable)
+EXPOSE 3000
+
+# Command to run the application when the container starts
+CMD ["npm", "start"]

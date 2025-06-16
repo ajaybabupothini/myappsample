@@ -1,0 +1,53 @@
+name: Build Docker Image with BuildKit (Rootless)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: gh-arc-runner-set # Or a specific label like 'self-hosted-linux'
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+
+    container:
+      # Use the rootless BuildKit image
+      image: moby/buildkit:rootless
+      options: --security-opt seccomp=unconfined --ulimit nofile=1024:1024 # Required for rootless BuildKit
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx (Optional, but good practice)
+        # This action sets up Buildx, which is BuildKit's frontend.
+        # It's not strictly necessary if you're just running 'buildctl build' directly,
+        # but it provides a convenient wrapper.
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image using buildctl
+        run: |
+          # The 'buildctl' command is available inside the moby/buildkit:rootless container
+          # You need to specify the Dockerfile context ('.') and the output format (docker)
+          # --frontend=dockerfile.v0 is the default and can often be omitted
+          # --local dockerfile=. --local context=. tells BuildKit where to find Dockerfile and context
+          # --output type=docker,name=my-app:latest,push=false saves the image to the local Docker daemon
+          # This assumes your self-hosted runner has a Docker daemon running.
+
+          echo "Listing files in current directory to verify context:"
+          ls -la
+
+          buildctl build \
+            --frontend=dockerfile.v0 \
+            --local dockerfile=. \
+            --local context=. \
+            --output type=docker,name=my-app:latest,push=false
+
+      - name: Verify built image (Optional)
+        # This step will run on the self-hosted runner's host Docker daemon,
+        # after the image has been transferred out of the BuildKit container.
+        run: |
+          echo "Verifying built image on host Docker daemon..."
+          docker images my-app:latest
+          docker run --rm my-app:latest echo "Hello from inside the built container!"

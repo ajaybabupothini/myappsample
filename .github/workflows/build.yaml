@@ -68,19 +68,3 @@ jobs:
       # This step is mostly for demonstration if you were trying to use the image locally on the runner.
       # If your runner environment doesn't have a Docker daemon, this will fail.
       # buildctl build --output type=docker,dest=- | docker load
-
-    - name: (Optional) Push Image to Registry
-      # This example pushes to a dummy registry. Replace with your actual registry and credentials.
-      # Ensure you have credentials configured for your registry (e.g., via GitHub Secrets)
-      # - name: Login to Docker Registry
-      #   uses: docker/login-action@v3
-      #   with:
-      #     registry: my-registry.example.com
-      #     username: ${{ secrets.DOCKER_USERNAME }}
-      #     password: ${{ secrets.DOCKER_PASSWORD }}
-      # buildctl build \
-      #   --frontend dockerfile.v0 \
-      #   --local dockerfile=. \
-      #   --local context=. \
-      #   --output type=image,name=my-registry.example.com/my-image:latest,push=true
-      echo "Image not pushed in this example. Modify to push to a real registry."

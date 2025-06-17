@@ -11,14 +11,12 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    - name: Set up BuildKit (if not already installed on runner)
-      # This step assumes a Linux environment. Adjust for other OS if needed.
-      # It downloads a pre-compiled buildctl binary.
+    - name: Set up BuildKit (buildctl and buildctl-daemonless.sh)
       run: |
-        BUILDKIT_VERSION="v0.22.0" # Make sure this version is correct and available
-        ARCH="linux-amd64"       # Ensure this matches your runner's architecture
+        BUILDKIT_VERSION="v0.22.0" # Ensure this is the version you want
+        ARCH="linux-amd64"       # Adjust for your runner's architecture
 
-        # Create a temporary directory for extraction that is definitely user-writable
+        # Create a temporary directory for extraction
         EXTRACT_DIR=$(mktemp -d -t buildkit-install-XXXXXX)
         echo "Extracting BuildKit to temporary directory: ${EXTRACT_DIR}"
 
@@ -26,31 +24,21 @@ jobs:
         curl -sL https://github.com/moby/buildkit/releases/download/${BUILDKIT_VERSION}/buildkit-${BUILDKIT_VERSION}.${ARCH}.tar.gz \
           | tar -xz -C "${EXTRACT_DIR}"
 
-        # Find the buildctl and buildkitd binaries within the extracted directory
-        # They are typically found directly under the extracted root or in a 'bin' subdirectory
+        # Find the buildctl binary within the extracted directory
         BUILDC_BIN=$(find "${EXTRACT_DIR}" -name buildctl -print -quit)
-        BUILDKITD_BIN=$(find "${EXTRACT_DIR}" -name buildkitd -print -quit)
-
-        if [ -z "$BUILDC_BIN" ] || [ -z "$BUILDKITD_BIN" ]; then
-          echo "Error: buildctl or buildkitd binary not found in extracted archive."
+        if [ -z "$BUILDC_BIN" ]; then
+          echo "Error: buildctl binary not found in extracted archive."
           ls -R "${EXTRACT_DIR}" # List contents of temp dir for debugging
           exit 1
         fi
-
         echo "Found buildctl at: $BUILDC_BIN"
-        echo "Found buildkitd at: $BUILDKITD_BIN"
-
-        # Move binaries to /usr/local/bin using sudo
-        # This assumes the runner's user can use sudo without a password
-        echo "Moving binaries to /usr/local/bin with sudo..."
         sudo mv "$BUILDC_BIN" /usr/local/bin/buildctl
-        sudo mv "$BUILDKITD_BIN" /usr/local/bin/buildkitd # buildkitd is also needed
         sudo chmod +x /usr/local/bin/buildctl
-        sudo chmod +x /usr/local/bin/buildkitd
 
+        # Download buildctl-daemonless.sh
         echo "Downloading buildctl-daemonless.sh..."
         curl -sL https://raw.githubusercontent.com/moby/buildkit/${BUILDKIT_VERSION}/cmd/buildctl/buildctl-daemonless.sh \
-          | sudo tee /usr/local/bin/buildctl-daemonless.sh > /dev/null # Use tee with sudo to write to /usr/local/bin
+          | sudo tee /usr/local/bin/buildctl-daemonless.sh > /dev/null
 
         sudo chmod +x /usr/local/bin/buildctl-daemonless.sh
 
@@ -59,46 +47,15 @@ jobs:
         # Clean up the temporary extraction directory
         rm -rf "${EXTRACT_DIR}"
 
-    - name: Start BuildKit Daemon in Rootless Mode
-      run: |
-        # Define a single root directory for BuildKit state
-        # This will contain all worker roots, cache, content store, and the socket.
-        BUILDKIT_STATE_ROOT="${HOME}/.buildkit_rootless_state"
-        mkdir -p "${BUILDKIT_STATE_ROOT}"
+    - name: Set up Docker Buildx (Optional but Good Practice)
+      # While buildctl-daemonless.sh handles the daemon, buildx action
+      # sets up QEMU for multi-arch builds and ensures Docker context is ready.
+      # It also helps configure the docker CLI for pushing.
+      uses: docker/setup-buildx-action@v3
 
-        echo "Starting BuildKit daemon in rootless mode (v0.22.0), using root directory: ${BUILDKIT_STATE_ROOT}"
-
-        # Start the rootless BuildKit daemon in the background
-        # Use the --rootless global option
-        # Use the --root flag for the unified state directory
-        # Also ensure buildkitd is found (it should be in /usr/local/bin from previous step)
-        /usr/local/bin/buildkitd \
-          --rootless \
-          --addr "unix://${BUILDKIT_STATE_ROOT}/buildkitd.sock" \
-          --root "${BUILDKIT_STATE_ROOT}" \
-          --allow-insecure-entitlement security.insecure \
-          --allow-insecure-entitlement network.host \
-          &
-
-        # Give BuildKit some time to start up
-        sleep 5
-        echo "BuildKit daemon started in rootless mode."
-
-    - name: Set BUILDKIT_HOST Environment Variable
-      run: |
-        echo "BUILDKIT_HOST=unix://${HOME}/.buildkit/buildkitd.sock" >> $GITHUB_ENV
-        echo "BUILDKIT_HOST set to $BUILDKIT_HOST"
-
-    - name: Verify BuildKit is running
-      run: |
-        buildctl debug workers
-
-    - name: Build Docker Image with BuildKit
-      run: |
-        # Replace 'my-image' and 'latest' with your desired image name and tag
-        # Replace '.' with the path to your Dockerfile context if it's not the current directory
-        buildctl build \
-          --frontend dockerfile.v0 \
-          --local dockerfile=. \
-          --local context=. \
-          --output type=docker,name=my-registry/my-image:latest,push=false # Change push=true and specify registry if needed
+    - name: Login to GitHub Container Registry (GHCR)
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}

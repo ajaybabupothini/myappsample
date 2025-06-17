@@ -1,0 +1,43 @@
+# build-with-kaniko.yml
+
+name: Build with kaniko
+
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+env:
+  KANIKO_CACHE_ARGS: "--cache=true --cache-copy-layers=true --cache-ttl=24h"
+
+jobs:
+  build-to-ghcr:
+    runs-on: cpc-gh-prod-runner # uses self-hosted runner scale set
+    container:
+      image: gcr.io/kaniko-project/executor:v1.20.0-debug # the kaniko image
+    permissions:
+      contents: read # read the repository
+      packages: write # to push to GHCR, omit for other container registry. https://docs.github.com/en/packages/managing-github-packages-using-github-actions-workflows/publishing-and-installing-a-package-with-github-actions#publishing-a-package-using-an-action
+
+    steps:
+      - name: Build and Push Image to GHCR with kaniko
+        run: |
+          cat <<EOF > /kaniko/.docker/config.json
+          {
+            "auths": {
+              "ghcr.io": {
+                "auth": "$(echo -n "$GIT_USERNAME:$GIT_PASSWORD" | base64 -w0)"
+              }
+            }
+          }
+          EOF
+
+          /kaniko/executor --dockerfile="./Dockerfile" \
+            --context="${{ github.repositoryUrl }}#${{ github.ref }}#${{ github.sha }}"  \
+            --destination="$GH_REGISTRY/$IMAGE_NAME:$(echo ${GITHUB_SHA} | head  -c 7)" \
+            ${{ env.KANIKO_CACHE_ARGS }} \
+            --push-retry 5 
+        env: # needed to authenticate to github and download the repo
+          GIT_USERNAME: ${{ github.actor }} 
+          GIT_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          GH_REGISTRY: "ghcr.io"
+          IMAGE_NAME: "${{ github.repository }}/nginx"

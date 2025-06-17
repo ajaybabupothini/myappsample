@@ -37,7 +37,7 @@ jobs:
 
         # Download buildctl-daemonless.sh
         echo "Downloading buildctl-daemonless.sh..."
-        curl -sL https://raw.githubusercontent.com/moby/buildkit/${BUILDKIT_VERSION}/cmd/buildctl/buildctl-daemonless.sh \
+        curl -sL https://raw.githubusercontent.com/moby/buildkit/${BUILDKIT_VERSION}/examples/buildctl-daemonless/buildctl-daemonless.sh \
           | sudo tee /usr/local/bin/buildctl-daemonless.sh > /dev/null
 
         sudo chmod +x /usr/local/bin/buildctl-daemonless.sh

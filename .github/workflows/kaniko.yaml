@@ -10,7 +10,7 @@ env:
   KANIKO_CACHE_ARGS: "--cache=true --cache-copy-layers=true --cache-ttl=24h"
 
 jobs:
-  build-to-ghcr:
+  build-to-ghcr-and-dockerhub:
     runs-on: gh-arc-runner-set # uses self-hosted runner scale set
     container:
       image: gcr.io/kaniko-project/executor:v1.20.0-debug # the kaniko image
@@ -19,8 +19,9 @@ jobs:
       packages: write # to push to GHCR, omit for other container registry. https://docs.github.com/en/packages/managing-github-packages-using-github-actions-workflows/publishing-and-installing-a-package-with-github-actions#publishing-a-package-using-an-action
 
     steps:
-      - name: Build and Push Image to GHCR with kaniko
+      - name: Build and Push Image to GHCR and Docker Hub with kaniko
         run: |
+          # Create config.json for GHCR
           cat <<EOF > /kaniko/.docker/config.json
           {
             "auths": {
@@ -31,13 +32,38 @@ jobs:
           }
           EOF
 
+          # Append Docker Hub credentials to config.json
+          # Note: If .docker/config.json already exists, kaniko will merge the new auths.
+          # If it doesn't, this creates it. We're appending here to ensure both are present.
+          cat <<EOF >> /kaniko/.docker/config.json
+          {
+            "auths": {
+              "docker.io": {
+                "auth": "$(echo -n "$DOCKER_USERNAME:$DOCKER_TOKEN" | base64 -w0)"
+              }
+            }
+          }
+          EOF
+
+          # Build and Push to GHCR
           /kaniko/executor --dockerfile="./Dockerfile" \
-            --context="${{ github.repositoryUrl }}#${{ github.ref }}#${{ github.sha }}"  \
-            --destination="$GH_REGISTRY/$IMAGE_NAME:$(echo ${GITHUB_SHA} | head  -c 7)" \
+            --context="${{ github.repositoryUrl }}#${{ github.ref }}#${{ github.sha }}" \
+            --destination="$GH_REGISTRY/$IMAGE_NAME:$(echo ${GITHUB_SHA} | head -c 7)" \
             ${{ env.KANIKO_CACHE_ARGS }} \
-            --push-retry 5 
+            --push-retry 5
+
+          # Build and Push to Docker Hub
+          /kaniko/executor --dockerfile="./Dockerfile" \
+            --context="${{ github.repositoryUrl }}#${{ github.ref }}#${{ github.sha }}" \
+            --destination="$DOCKER_REGISTRY/$DOCKER_IMAGE_NAME:$(echo ${GITHUB_SHA} | head -c 7)" \
+            ${{ env.KANIKO_CACHE_ARGS }} \
+            --push-retry 5
         env: # needed to authenticate to github and download the repo
-          GIT_USERNAME: ${{ github.actor }} 
+          GIT_USERNAME: ${{ github.actor }}
           GIT_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
           GH_REGISTRY: "ghcr.io"
-          IMAGE_NAME: "${{ github.repository }}/nginx"
+          IMAGE_NAME: "${{ github.repository }}/buildx"
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+          DOCKER_REGISTRY: "docker.io"
+          DOCKER_IMAGE_NAME: "ajaybabupothini/buildx" # IMPORTANT: Replace 'your-dockerhub-username' with your actual Docker Hub username

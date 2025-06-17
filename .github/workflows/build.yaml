@@ -61,18 +61,25 @@ jobs:
 
     - name: Start BuildKit Daemon in Rootless Mode
       run: |
-        # Create a directory for BuildKit state
-        mkdir -p "${HOME}/.buildkit"
+        # Define a single root directory for BuildKit state
+        # This will contain all worker roots, cache, content store, and the socket.
+        BUILDKIT_STATE_ROOT="${HOME}/.buildkit_rootless_state"
+        mkdir -p "${BUILDKIT_STATE_ROOT}"
+
+        echo "Starting BuildKit daemon in rootless mode (v0.22.0), using root directory: ${BUILDKIT_STATE_ROOT}"
+
         # Start the rootless BuildKit daemon in the background
-        # You might need to install 'buildkitd-rootless.sh' or specify the full path if not in PATH
-        # For simplicity, we'll use a direct invocation of buildkitd with rootless flags
+        # Use the --rootless global option
+        # Use the --root flag for the unified state directory
+        # Also ensure buildkitd is found (it should be in /usr/local/bin from previous step)
         /usr/local/bin/buildkitd \
-          --addr "unix://${HOME}/.buildkit/buildkitd.sock" \
-          --containerd-worker-root "${HOME}/.buildkit/containerd-root" \
-          --oci-worker-root "${HOME}/.buildkit/oci-root" \
+          --rootless \
+          --addr "unix://${BUILDKIT_STATE_ROOT}/buildkitd.sock" \
+          --root "${BUILDKIT_STATE_ROOT}" \
           --allow-insecure-entitlement security.insecure \
           --allow-insecure-entitlement network.host \
           &
+
         # Give BuildKit some time to start up
         sleep 5
         echo "BuildKit daemon started in rootless mode."

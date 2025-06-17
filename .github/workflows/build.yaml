@@ -15,9 +15,9 @@ jobs:
       # This step assumes a Linux environment. Adjust for other OS if needed.
       # It downloads a pre-compiled buildctl binary.
       run: |
-        BUILDKIT_VERSION="v0.12.5" # Use the latest stable version
+        BUILDKIT_VERSION="v0.23.0" # Use the latest stable version
         ARCH="linux-amd64"       # Adjust for your runner's architecture if needed (e.g., linux-arm64)
-        BUILDCTL_URL="https://github.com/moby/buildkit/releases/download/${BUILDKIT_VERSION}/buildkit-${BUILDKIT_VERSION}.${ARCH}.tar.gz"
+        BUILDCTL_URL="https://github.com/moby/buildkit/releases/download/${BUILDKIT_VERSION}/buildkit-${BUILDKIT_VERSION}.${ARCH}.tar"
 
         echo "Downloading BuildKit from: ${BUILDCTL_URL}"
         curl -sL ${BUILDCTL_URL} | tar -xz -C /tmp

@@ -14,9 +14,9 @@ jobs:
     - name: Set up BuildKit (buildctl and buildctl-daemonless.sh)
       run: |
         BUILDKIT_VERSION="v0.22.0" # Ensure this is the version you want
-        ROOTLESSKIT_VERSION="v2.0.2"
+        ROOTLESSKIT_VERSION="v2.3.5"
         ARCH="linux-amd64"       # Adjust for your runner's architecture
-
+        ROOTLESSKIT_ARCH="x86_64"
         # Create a temporary directory for extraction
         EXTRACT_DIR=$(mktemp -d -t buildkit-install-XXXXXX)
         echo "Extracting BuildKit to temporary directory: ${EXTRACT_DIR}"
@@ -50,9 +50,9 @@ jobs:
 
         # --- Install RootlessKit ---
         echo "Downloading RootlessKit v${ROOTLESSKIT_VERSION}..."
-        # RootlessKit archives typically contain the binary directly
-        curl -sL https://github.com/rootless-containers/rootlesskit/releases/download/${ROOTLESSKIT_VERSION}/rootlesskit-${ARCH}.tar.gz \
-          | sudo tar -xz -C /usr/local/bin/ # Extract directly into /usr/local/bin
+        # Corrected filename for RootlessKit x86_64 asset
+        curl -sL https://github.com/rootless-containers/rootlesskit/releases/download/${ROOTLESSKIT_VERSION}/rootlesskit-${ROOTLESSKIT_ARCH}.tar.gz \
+          | sudo tar -xz -C /usr/local/bin/
 
         sudo chmod +x /usr/local/bin/rootlesskit
         echo "RootlessKit installed at /usr/local/bin/rootlesskit"

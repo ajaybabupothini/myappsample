@@ -11,7 +11,7 @@ env:
 
 jobs:
   build-to-ghcr:
-    runs-on: cpc-gh-prod-runner # uses self-hosted runner scale set
+    runs-on: gh-arc-runner-set # uses self-hosted runner scale set
     container:
       image: gcr.io/kaniko-project/executor:v1.20.0-debug # the kaniko image
     permissions:

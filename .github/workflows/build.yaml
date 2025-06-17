@@ -1,0 +1,86 @@
+name: Build with BuildKit Rootless on ARC Runner
+
+on:
+  workflow_dispatch: # This line ensures the workflow can only be triggered manually
+
+jobs:
+  build:
+    runs-on: gh-arc-runner-set # Or your specific ARC runner label, e.g., 'self-hosted-arc-linux'
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up BuildKit (if not already installed on runner)
+      # This step assumes a Linux environment. Adjust for other OS if needed.
+      # It downloads a pre-compiled buildctl binary.
+      run: |
+        BUILDKIT_VERSION="v0.12.5" # Use the latest stable version
+        ARCH="linux-amd64"       # Adjust for your runner's architecture if needed (e.g., linux-arm64)
+        BUILDCTL_URL="https://github.com/moby/buildkit/releases/download/${BUILDKIT_VERSION}/buildkit-${BUILDKIT_VERSION}.${ARCH}.tar.gz"
+
+        echo "Downloading BuildKit from: ${BUILDCTL_URL}"
+        curl -sL ${BUILDCTL_URL} | tar -xz -C /tmp
+        sudo mv /tmp/buildkit/bin/buildctl /usr/local/bin/buildctl
+        sudo chmod +x /usr/local/bin/buildctl
+        echo "BuildKit buildctl installed at /usr/local/bin/buildctl"
+
+    - name: Start BuildKit Daemon in Rootless Mode
+      run: |
+        # Create a directory for BuildKit state
+        mkdir -p "${HOME}/.buildkit"
+        # Start the rootless BuildKit daemon in the background
+        # You might need to install 'buildkitd-rootless.sh' or specify the full path if not in PATH
+        # For simplicity, we'll use a direct invocation of buildkitd with rootless flags
+        /usr/local/bin/buildkitd \
+          --addr "unix://${HOME}/.buildkit/buildkitd.sock" \
+          --containerd-worker-root "${HOME}/.buildkit/containerd-root" \
+          --oci-worker-root "${HOME}/.buildkit/oci-root" \
+          --allow-insecure-entitlement security.insecure \
+          --allow-insecure-entitlement network.host \
+          &
+        # Give BuildKit some time to start up
+        sleep 5
+        echo "BuildKit daemon started in rootless mode."
+
+    - name: Set BUILDKIT_HOST Environment Variable
+      run: |
+        echo "BUILDKIT_HOST=unix://${HOME}/.buildkit/buildkitd.sock" >> $GITHUB_ENV
+        echo "BUILDKIT_HOST set to $BUILDKIT_HOST"
+
+    - name: Verify BuildKit is running
+      run: |
+        buildctl debug workers
+
+    - name: Build Docker Image with BuildKit
+      run: |
+        # Replace 'my-image' and 'latest' with your desired image name and tag
+        # Replace '.' with the path to your Dockerfile context if it's not the current directory
+        buildctl build \
+          --frontend dockerfile.v0 \
+          --local dockerfile=. \
+          --local context=. \
+          --output type=docker,name=my-registry/my-image:latest,push=false # Change push=true and specify registry if needed
+
+    - name: (Optional) Load Image into Docker Daemon (if you need to run it locally)
+      # This step requires a Docker daemon available on the runner, which might not be the case for rootless BuildKit.
+      # If you need to use the built image later in the workflow (e.g., for testing), you might push it to a registry.
+      # This step is mostly for demonstration if you were trying to use the image locally on the runner.
+      # If your runner environment doesn't have a Docker daemon, this will fail.
+      # buildctl build --output type=docker,dest=- | docker load
+
+    - name: (Optional) Push Image to Registry
+      # This example pushes to a dummy registry. Replace with your actual registry and credentials.
+      # Ensure you have credentials configured for your registry (e.g., via GitHub Secrets)
+      # - name: Login to Docker Registry
+      #   uses: docker/login-action@v3
+      #   with:
+      #     registry: my-registry.example.com
+      #     username: ${{ secrets.DOCKER_USERNAME }}
+      #     password: ${{ secrets.DOCKER_PASSWORD }}
+      # buildctl build \
+      #   --frontend dockerfile.v0 \
+      #   --local dockerfile=. \
+      #   --local context=. \
+      #   --output type=image,name=my-registry.example.com/my-image:latest,push=true
+      echo "Image not pushed in this example. Modify to push to a real registry."

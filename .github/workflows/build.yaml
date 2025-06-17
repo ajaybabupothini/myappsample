@@ -15,13 +15,49 @@ jobs:
       # This step assumes a Linux environment. Adjust for other OS if needed.
       # It downloads a pre-compiled buildctl binary.
       run: |
-        BUILDKIT_VERSION=v0.22.0
-        curl -sL https://github.com/moby/buildkit/releases/download/${BUILDKIT_VERSION}/buildkit-${BUILDKIT_VERSION}.linux-amd64.tar.gz \
-        | tar -xz -C /usr/local && \
+        BUILDKIT_VERSION="v0.22.0" # Make sure this version is correct and available
+        ARCH="linux-amd64"       # Ensure this matches your runner's architecture
+
+        # Create a temporary directory for extraction that is definitely user-writable
+        EXTRACT_DIR=$(mktemp -d -t buildkit-install-XXXXXX)
+        echo "Extracting BuildKit to temporary directory: ${EXTRACT_DIR}"
+
+        # Download BuildKit archive and extract to the temporary directory
+        curl -sL https://github.com/moby/buildkit/releases/download/${BUILDKIT_VERSION}/buildkit-${BUILDKIT_VERSION}.${ARCH}.tar.gz \
+          | tar -xz -C "${EXTRACT_DIR}"
+
+        # Find the buildctl and buildkitd binaries within the extracted directory
+        # They are typically found directly under the extracted root or in a 'bin' subdirectory
+        BUILDC_BIN=$(find "${EXTRACT_DIR}" -name buildctl -print -quit)
+        BUILDKITD_BIN=$(find "${EXTRACT_DIR}" -name buildkitd -print -quit)
+
+        if [ -z "$BUILDC_BIN" ] || [ -z "$BUILDKITD_BIN" ]; then
+          echo "Error: buildctl or buildkitd binary not found in extracted archive."
+          ls -R "${EXTRACT_DIR}" # List contents of temp dir for debugging
+          exit 1
+        fi
+
+        echo "Found buildctl at: $BUILDC_BIN"
+        echo "Found buildkitd at: $BUILDKITD_BIN"
+
+        # Move binaries to /usr/local/bin using sudo
+        # This assumes the runner's user can use sudo without a password
+        echo "Moving binaries to /usr/local/bin with sudo..."
+        sudo mv "$BUILDC_BIN" /usr/local/bin/buildctl
+        sudo mv "$BUILDKITD_BIN" /usr/local/bin/buildkitd # buildkitd is also needed
+        sudo chmod +x /usr/local/bin/buildctl
+        sudo chmod +x /usr/local/bin/buildkitd
+
+        echo "Downloading buildctl-daemonless.sh..."
         curl -sL https://raw.githubusercontent.com/moby/buildkit/${BUILDKIT_VERSION}/cmd/buildctl/buildctl-daemonless.sh \
-        -o /usr/local/bin/buildctl-daemonless.sh && \
-        chmod +x /usr/local/bin/buildctl*
-        echo "BuildKit buildctl installed at /usr/local/bin/buildctl"
+          | sudo tee /usr/local/bin/buildctl-daemonless.sh > /dev/null # Use tee with sudo to write to /usr/local/bin
+
+        sudo chmod +x /usr/local/bin/buildctl-daemonless.sh
+
+        echo "BuildKit buildctl components installed at /usr/local/bin/"
+
+        # Clean up the temporary extraction directory
+        rm -rf "${EXTRACT_DIR}"
 
     - name: Start BuildKit Daemon in Rootless Mode
       run: |

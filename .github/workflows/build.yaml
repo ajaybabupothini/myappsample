@@ -15,18 +15,12 @@ jobs:
       # This step assumes a Linux environment. Adjust for other OS if needed.
       # It downloads a pre-compiled buildctl binary.
       run: |
-        BUILDKIT_VERSION="v0.23.0" # Use the latest stable version
-        ARCH="linux-amd64"       # Adjust for your runner's architecture if needed (e.g., linux-arm64)
-        BUILDCTL_URL="curl -sL https://github.com/moby/buildkit/releases/download/${BUILDKIT_VERSION}/buildkit-${BUILDKIT_VERSION}.linux-amd64.tar.gz"
-        EXTRACT_DIR=$(mktemp -d -t buildkit-XXXXXX)
-
-        echo "Downloading BuildKit from: ${BUILDCTL_URL}"
-        curl -sL ${BUILDCTL_URL} | tar -xz --no-same-owner --no-same-permissions -C "${EXTRACT_DIR}"
-        BUILDC_BIN=$(find "${EXTRACT_DIR}" -name buildctl -print -quit)
-        BUILD_DAEMON_BIN=$(find "${EXTRACT_DIR}" -name buildkitd -print -quit)
-
-        #sudo mv /tmp/buildkit/bin/buildctl /usr/local/bin/buildctl
-        # sudo chmod +x /usr/local/bin/buildctl*
+        BUILDKIT_VERSION=v0.22.0
+        curl -sL https://github.com/moby/buildkit/releases/download/${BUILDKIT_VERSION}/buildkit-${BUILDKIT_VERSION}.linux-amd64.tar.gz \
+        | tar -xz -C /usr/local && \
+        curl -sL https://raw.githubusercontent.com/moby/buildkit/${BUILDKIT_VERSION}/cmd/buildctl/buildctl-daemonless.sh \
+        -o /usr/local/bin/buildctl-daemonless.sh && \
+        chmod +x /usr/local/bin/buildctl*
         echo "BuildKit buildctl installed at /usr/local/bin/buildctl"
 
     - name: Start BuildKit Daemon in Rootless Mode

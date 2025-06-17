@@ -50,6 +50,8 @@ jobs:
     - name: Verify buildctl is available
       run: |
         buildctl --version
+        export XDG_RUNTIME_DIR="$(mktemp -d)"
+        echo "XDG_RUNTIME_DIR set to: $XDG_RUNTIME_DIR"
         buildctl-daemonless.sh --version
 
     - name: Login to GitHub Container Registry (GHCR)

@@ -14,7 +14,7 @@ jobs:
     - name: Set up BuildKit (buildctl and buildctl-daemonless.sh)
       run: |
         BUILDKIT_VERSION="v0.22.0" # Ensure this is the version you want
-        ROOTLESSKIT_VERSION="v2.0.2
+        ROOTLESSKIT_VERSION="v2.0.2"
         ARCH="linux-amd64"       # Adjust for your runner's architecture
 
         # Create a temporary directory for extraction

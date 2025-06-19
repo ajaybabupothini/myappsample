@@ -19,7 +19,7 @@ jobs:
         # Define the volume source (a named Docker volume, host path, or emptyDir)
         # and its destination path inside the container.
         # For emptyDir, you just specify a name and the mount path.
-        - /home/user/.local/share/buildkit:/home/user/.local/share/buildkit 
+        - /github/workspace/.buildkit_data:/home/user/.local/share/buildkit
 
     steps:
       - name: Checkout repository

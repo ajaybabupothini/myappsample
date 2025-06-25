@@ -20,7 +20,7 @@ jobs:
         id: 'auth'
         uses: 'google-github-actions/auth@v2'
         with:
-          workload_identity_provider: 'projects/888274222600/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider' # Replace with your Workload Identity Provider
+          workload_identity_provider: 'projects/888274222600/locations/global/workloadIdentityPools/my-pool/providers/my-provider' # Replace with your Workload Identity Provider
           service_account: 'github-actions-artifact-push@melodic-furnace-403022.iam.gserviceaccount.com' # Replace with your Service Account Email
           # OR, if using a service account key directly (less recommended for production):
           # credentials_json: ${{ secrets.GCP_SA_KEY }}

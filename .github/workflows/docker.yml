@@ -5,7 +5,7 @@ on:
 
 jobs:
   build-image:
-    runs-on: gh-arc-runner-set # Assumes your Kubernetes self-hosted runner is configured
+    runs-on: arc-runner-set # Assumes your Kubernetes self-hosted runner is configured
     permissions:
       contents: read
       packages: write

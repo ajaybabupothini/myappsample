@@ -38,6 +38,11 @@ jobs:
             --oci-worker-no-process-sandbox
             --debug
 
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: melodic-furnace-403022 # Ensure this matches your project ID
+
       - name: Log in to GitHub Container Registry and Google Artifact Registry
         uses: docker/login-action@v3
         with:

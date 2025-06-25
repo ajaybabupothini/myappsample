@@ -22,6 +22,7 @@ jobs:
         with:
           workload_identity_provider: 'projects/888274222600/locations/global/workloadIdentityPools/my-pool/providers/my-provider' # Replace with your Workload Identity Provider
           service_account: 'github-actions-artifact-push@melodic-furnace-403022.iam.gserviceaccount.com' # Replace with your Service Account Email
+          access_token_lifetime: 300s
           # OR, if using a service account key directly (less recommended for production):
           # credentials_json: ${{ secrets.GCP_SA_KEY }}
 
@@ -45,8 +46,8 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/login-action@v3
         with:
-          registry: us-east4-docker.pkg.dev/melodic-furnace-403022/cpc-docker-repo # Example: us-central1-docker.pkg.dev
-          username: _json_key
+          registry: us-east4-docker.pkg.dev # Example: us-central1-docker.pkg.dev
+          username: oauth2accesstoken
           password: ${{ steps.auth.outputs.access_token }} # Use the access token from the auth step
           # OR, if using a service account key directly:
           # password: ${{ secrets.GCP_SA_KEY }}
